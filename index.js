@@ -26,6 +26,28 @@ async function run() {
     await client.connect();
     // Send a ping to confirm a successful connection
 
+    const database=client.db('bloodlove')
+    const userCollections = database.collection('user')
+
+    app.post('/users',async(req,res)=>{
+      const userInfo = req.body;
+      userInfo.role = "buyer";
+      userInfo.createdAt = new Date();
+
+      const result = await userCollections.insertOne(userInfo);
+      res.send(result)
+    })
+
+    app.get('/users/role/:email', async(req,res)=>{
+      const {email} =req.params
+      console.log(email);
+      
+
+      const query = {email:email}
+      const result = await userCollections.findOne(query)
+      console.log(result);
+      res.send(result)
+    })
 
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
