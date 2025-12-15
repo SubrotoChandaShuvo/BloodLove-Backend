@@ -28,19 +28,19 @@ async function run() {
 
     const database=client.db('bloodlove')
     const userCollections = database.collection('user')
-    const productCollections = database.collection('product')
+    const requestsCollections = database.collection('request')
 
     app.post('/users',async(req,res)=>{
       const userInfo = req.body;
       userInfo.createdAt = new Date();
-
+      userInfo.role='donor'
+      userInfo.status='active'
       const result = await userCollections.insertOne(userInfo);
       res.send(result)
     })
 
     app.get('/users/role/:email', async(req,res)=>{
       const {email} =req.params
-      console.log(email);
 
       const query = {email:email}
       const result = await userCollections.findOne(query)
@@ -49,10 +49,10 @@ async function run() {
     })
 
     //Products
-    app.post('/products', async(req,res)=>{
+    app.post('/request', async(req,res)=>{
       const data = req.body;
       data.createdAt= new Date();
-      const result = await productCollections.insertOne(data);
+      const result = await requestsCollections.insertOne(data);
       res.send(result);
     })
 
