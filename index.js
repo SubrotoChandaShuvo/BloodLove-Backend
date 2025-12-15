@@ -28,10 +28,10 @@ async function run() {
 
     const database=client.db('bloodlove')
     const userCollections = database.collection('user')
+    const productCollections = database.collection('product')
 
     app.post('/users',async(req,res)=>{
       const userInfo = req.body;
-      userInfo.role = "buyer";
       userInfo.createdAt = new Date();
 
       const result = await userCollections.insertOne(userInfo);
@@ -41,12 +41,19 @@ async function run() {
     app.get('/users/role/:email', async(req,res)=>{
       const {email} =req.params
       console.log(email);
-      
 
       const query = {email:email}
       const result = await userCollections.findOne(query)
       console.log(result);
       res.send(result)
+    })
+
+    //Products
+    app.post('/products', async(req,res)=>{
+      const data = req.body;
+      data.createdAt= new Date();
+      const result = await productCollections.insertOne(data);
+      res.send(result);
     })
 
     await client.db("admin").command({ ping: 1 });
