@@ -22,16 +22,15 @@ const verifyFBToken = async (req, res, next) => {
   }
 
   try {
-    const idToken = token.split(' ')[1]
-    const decoded = await admin.auth().verifyIdToken(idToken)
-    console.log("decoded info", decoded)
+    const idToken = token.split(" ")[1];
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    console.log("decoded info", decoded);
     req.decoded_email = decoded.email;
     next();
   } catch (error) {
     return res.status(401).send({ message: "unauthorize access" });
   }
 };
-
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
@@ -70,26 +69,25 @@ async function run() {
     });
 
     //Users Get
-    app.get('/users', verifyFBToken, async(req,res)=>{
+    app.get("/users", verifyFBToken, async (req, res) => {
       const result = await userCollections.find().toArray();
       res.status(200).send(result);
-    })
-
+    });
 
     //user status Update
-    app.patch('/update/user/status', verifyFBToken, async(req, res)=>{
-      const {email, status} = req.query;
-      const query={email:email}
+    app.patch("/update/user/status", verifyFBToken, async (req, res) => {
+      const { email, status } = req.query;
+      const query = { email: email };
 
-      const updateStatus ={
-        $set:{
-          status: status
-        }
-      }
+      const updateStatus = {
+        $set: {
+          status: status,
+        },
+      };
 
-      const result = await userCollections.updateOne(query, updateStatus)
-      res.send(result)
-    })
+      const result = await userCollections.updateOne(query, updateStatus);
+      res.send(result);
+    });
 
     app.get("/users/role/:email", async (req, res) => {
       const { email } = req.params;
@@ -108,14 +106,12 @@ async function run() {
       res.send(result);
     });
 
-    // get Product detales
-    app.get("/manager/products/:email", async (req, res) => {
-      const email = req.params.email;
-      const query = { managerEmail: email };
+    // get my_request
+    app.get("/my-request", verifyFBToken, async (req, res) => {
+      const email = req.decoded_email;
+      const query= {email:email};
 
-      const result = await productCollections.find(query).toArray();
-      console.log(result);
-
+      const result = await requestsCollections.find(query).toArray;
       res.send(result);
     });
 
