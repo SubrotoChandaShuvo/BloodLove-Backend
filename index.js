@@ -76,6 +76,20 @@ async function run() {
     })
 
 
+    //user status Update
+    app.patch('/update/user/status', verifyFBToken, async(req, res)=>{
+      const {email, status} = req.query;
+      const query={email:email}
+
+      const updateStatus ={
+        $set:{
+          status: status
+        }
+      }
+
+      const result = await userCollections.updateOne(query, updateStatus)
+      res.send(result)
+    })
 
     app.get("/users/role/:email", async (req, res) => {
       const { email } = req.params;
