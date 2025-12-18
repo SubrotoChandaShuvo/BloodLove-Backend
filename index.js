@@ -59,6 +59,7 @@ async function run() {
     const userCollections = database.collection("user");
     const requestsCollections = database.collection("request");
 
+    //Users Post
     app.post("/users", async (req, res) => {
       const userInfo = req.body;
       userInfo.createdAt = new Date();
@@ -67,6 +68,14 @@ async function run() {
       const result = await userCollections.insertOne(userInfo);
       res.send(result);
     });
+
+    //Users Get
+    app.get('/users', verifyFBToken, async(req,res)=>{
+      const result = await userCollections.find().toArray();
+      res.status(200).send(result);
+    })
+
+
 
     app.get("/users/role/:email", async (req, res) => {
       const { email } = req.params;
