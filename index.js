@@ -106,13 +106,30 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/request", async (req, res) => {
+      const result = await requestsCollections.find().toArray();
+      console.log(result);
+      res.send(result);
+    });
+
     // get my_request
     app.get("/my-request", verifyFBToken, async (req, res) => {
       const email = req.decoded_email;
-      const query= {email:email};
+      const query = {
+        requesterEmail: email,
+      };
+      const page = Number(req.query.page);
+      const size  = Number(req.query.size);
 
-      const result = await requestsCollections.find(query).toArray;
-      res.send(result);
+      const result = await requestsCollections
+      .find(query)
+      .limit(size)
+      .skip(size*page)
+      .toArray();
+
+
+      const totalRequest = await requestsCollections.countDocuments(query);
+      res.send({request: result, totalRequest:totalRequest});
     });
 
     await client.db("admin").command({ ping: 1 });
