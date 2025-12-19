@@ -11,6 +11,7 @@ app.use(cors());
 app.use(express.json());
 
 const admin = require("firebase-admin");
+const { Query } = require("firebase-admin/firestore");
 const decoded = Buffer.from(process.env.FB_SERVICE_KEY, "base64").toString(
   "utf8"
 );
@@ -165,6 +166,8 @@ async function run() {
       res.send({ url: session.url });
     });
 
+
+    // stripe er payment details DB te save
     app.post("/success-payment", async (req, res) => {
       const { session_id } = req.query;
       const session = await stripe.checkout.sessions.retrieve(
@@ -186,6 +189,31 @@ async function run() {
         return res.send(result);
       }
     });
+
+    // search er Kaj\
+    app.get('/search-requests', async(req,res)=>{
+      const {bloodGroup, district, upazila} = req.query;
+      const query={}
+      if(!Query){
+        return
+      }
+      if(bloodGroup){
+        const fixed = bloodGroup.replace(/ /g, "+").trim();
+        query.bloodGroup=fixed;
+      }
+      if(district){
+        query.recipientDistrict=district;
+      }
+      if(upazila){
+        query.recipientUpazila = upazila;
+      }
+
+      const result = await requestsCollections.find(query).toArray();
+      res.send(result)
+      
+
+    })
+
 
     await client.db("admin").command({ ping: 1 });
     console.log(
