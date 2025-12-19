@@ -3,6 +3,8 @@ const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
 const port = process.env.PORT || 3000;
+const stripe = require("stripe")(process.env.STRIPE_SECRATR);
+const crypto = require("crypto");
 
 const app = express();
 app.use(cors());
@@ -119,17 +121,48 @@ async function run() {
         requesterEmail: email,
       };
       const page = Number(req.query.page);
-      const size  = Number(req.query.size);
+      const size = Number(req.query.size);
 
       const result = await requestsCollections
-      .find(query)
-      .limit(size)
-      .skip(size*page)
-      .toArray();
-
+        .find(query)
+        .limit(size)
+        .skip(size * page)
+        .toArray();
 
       const totalRequest = await requestsCollections.countDocuments(query);
-      res.send({request: result, totalRequest:totalRequest});
+      res.send({ request: result, totalRequest: totalRequest });
+    });
+
+    //Payment
+    app.post("/create-payment-checkout", async (req, res) => {
+      const information = req.body;
+      const amount = parseInt(information.donateAmount) * 100;
+
+
+      //Stripe er main kaj
+      const session = await stripe.checkout.sessions.create({
+        line_items: [
+          {
+            price_data:{
+              currency:'usd',
+              unit_amount: amount,
+              product_data: {
+                name: 'Please Donate'
+              }
+            },
+            quantity: 1,
+          },
+        ],
+        mode: "payment",
+        metadata: {
+          donarName: information?.donorName
+        },
+        customer_email: information?.donerEmail,
+        success_url: `${process.env.SITE_DOMAIN}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${process.env.SITE_DOMAIN}/payment-cancelled`,
+      });
+
+      res.send({url: session.url})
     });
 
     await client.db("admin").command({ ping: 1 });
