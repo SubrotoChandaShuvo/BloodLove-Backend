@@ -16,7 +16,7 @@ This backend provides RESTful APIs to support:
 - Connecting securely with the frontend web application  
 
 It’s designed to work with the **BloodLove** frontend at:  
-🔗 **Main Live Demo (Frontend):** https://candid‑douhua‑d628ca.netlify.app/
+🔗 **Live Demo:** [https://candid-douhua-d628ca.netlify.app/](https://candid-douhua-d628ca.netlify.app/)
 
 ---
 
@@ -70,3 +70,13 @@ This starts the backend server (e.g., on http://localhost:5000) with nodemon for
 bash
 Copy code
 npm start
+
+
+
+
+📜 License
+This project is open source. You are free to use, modify, and share it.
+
+❤️ Author
+Subroto Chanda Shuvo — Creator of BloodLove
+Your contributions or support can help save lives. Don’t forget to ⭐ the repository if you find it useful!
