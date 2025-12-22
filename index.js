@@ -128,14 +128,22 @@ async function run() {
     //   console.log(result);
     //   res.send(result);
     // });
-    app.get("/request", async (req, res) => {
-      const page = parseInt(req.query.page) || 0; // 0-indexed
-      const size = parseInt(req.query.size) || 9; // items per page
 
-      const totalRequests = await requestsCollections.countDocuments();
+    app.get("/request", async (req, res) => {
+      const page = parseInt(req.query.page) || 0;
+      const size = parseInt(req.query.size) || 9;
+      const status = req.query.status; // pending / done / inprogress
+
+      const query = {};
+
+      if (status) {
+        query.donationStatus = status;
+      }
+
+      const totalRequests = await requestsCollections.countDocuments(query);
 
       const requests = await requestsCollections
-        .find()
+        .find(query)
         .skip(page * size)
         .limit(size)
         .toArray();
@@ -144,6 +152,31 @@ async function run() {
         requests,
         totalRequests,
       });
+    });
+
+    // details Page
+    app.get("/user/details/:email", async (req, res) => {
+      const email = req.params.email;
+      const request = await requestsCollections.findOne({
+        requesterEmail: email,
+      });
+
+      if (!request) {
+        return res.status(404).send({ message: "Request not found" });
+      }
+      console.log(request);
+
+      res.send(request);
+    });
+
+    // Donate confirm patch
+    app.patch("/update/donation/status", async (req, res) => {
+      const { email, status } = req.query;
+      const result = await requestsCollections.updateOne(
+        { requesterEmail: email },
+        { $set: { donationStatus: status } }
+      );
+      res.send(result);
     });
 
     // get my_request
