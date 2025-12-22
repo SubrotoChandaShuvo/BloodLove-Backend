@@ -1,4 +1,4 @@
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
@@ -93,6 +93,21 @@ async function run() {
       res.send(result);
     });
 
+    //---------------------User Role Update-------------
+    app.patch("/update/user/role", async (req, res) => {
+      const { email, role } = req.query;
+      const query = { email: email };
+
+      const updateStatus = {
+        $set: {
+          role: role,
+        },
+      };
+
+      const result = await userCollections.updateOne(query, updateStatus);
+      res.send(result);
+    });
+
     //Update Profile
     app.patch("/users/update/profile", verifyFBToken, async (req, res) => {
       const { email } = req.query;
@@ -105,6 +120,7 @@ async function run() {
       res.send(result);
     });
 
+    // send user
     app.get("/users/role/:email", async (req, res) => {
       const { email } = req.params;
 
@@ -154,29 +170,113 @@ async function run() {
       });
     });
 
-    // details Page
-    app.get("/user/details/:email", async (req, res) => {
-      const email = req.params.email;
-      const request = await requestsCollections.findOne({
-        requesterEmail: email,
-      });
+    // ----------------------- details Page ---------------------------
+    app.get("/details/:id", async (req, res) => {
+      const { id } = req.params;
+      const query = {
+        _id: new ObjectId(id),
+      };
 
-      if (!request) {
-        return res.status(404).send({ message: "Request not found" });
-      }
-      console.log(request);
+      // console.log('hello');
 
-      res.send(request);
+      const request = await requestsCollections.findOne(query);
+      if (!request)
+        return res.status(404).json({ message: "Request not found" });
+
+      res.json(request);
     });
 
-    // Donate confirm patch
+    // Update donation status
+    // app.patch("/update/donation/status", async (req, res) => {
+    //   const { id, status } = req.query;
+    //   const query = { _id: new ObjectId(id) };
+    //   const updateStatus = { $set: { donationStatus: status } };
+    //   const result = await requestsCollections.updateOne(query, updateStatus);
+
+    //   if (result.matchedCount === 0)
+    //     return res.status(404).json({ message: "Request not found" });
+
+    //   res.json({
+    //     message: "Donation status updated",
+    //     modifiedCount: result.modifiedCount,
+    //   });
+    // });
+
     app.patch("/update/donation/status", async (req, res) => {
-      const { email, status } = req.query;
-      const result = await requestsCollections.updateOne(
-        { requesterEmail: email },
-        { $set: { donationStatus: status } }
-      );
-      res.send(result);
+      const { id, status, donorName, donorEmail } = req.body; // get donor info from request body
+
+      const query = { _id: new ObjectId(id) };
+
+      // Update status and store donor info if provided
+      const updateData = {
+        $set: { donationStatus: status },
+      };
+
+      if (donorName && donorEmail) {
+        updateData.$set.donorName = donorName;
+        updateData.$set.donorEmail = donorEmail;
+      }
+
+      const result = await requestsCollections.updateOne(query, updateData);
+
+      if (result.matchedCount === 0)
+        return res.status(404).json({ message: "Request not found" });
+
+      res.json({
+        message: "Donation status updated",
+        modifiedCount: result.modifiedCount,
+      });
+    });
+
+    // DELETE: Delete a donation request
+    app.delete("/delete/request/:id", async (req, res) => {
+      const { id } = req.params;
+
+      const query = { _id: new ObjectId(id) };
+      const result = await requestsCollections.deleteOne(query);
+
+      if (result.deletedCount === 0) {
+        return res.status(404).json({ message: "Request not found" });
+      }
+
+      res.json({ message: "Donation request deleted successfully" });
+    });
+
+    // for admin send the total donor number -----------------
+    // app.get("/donors/count", async (req, res) => {
+    //   try {
+    //     const totalDonor = await userCollections.countDocuments();
+    //     res.json({ totalDonor });
+    //   } catch (err) {
+    //     console.error(err);
+    //     res.status(500).json({ message: "Server error" });
+    //   }
+    // });
+    // // for admin send the total donor number -----------------
+    // app.get("/requests/count", async (req, res) => {
+    //   try {
+    //     const totalRequests = await requestsCollections.countDocuments();
+    //     res.json({ totalRequests });
+    //   } catch (err) {
+    //     console.error(err);
+    //     res.status(500).json({ message: "Server error" });
+    //   }
+    // });
+    // for admin send the total Request number -----------------
+    app.get("/requests/count", async (req, res) => {
+      try {
+        const totalRequests = await requestsCollections.countDocuments();
+        // const totalFund = await userCollections.countDocuments();
+         const totalFund = await paymentsCollections.aggregate([
+      { $match: { payment_status: "paid" } }, // optional: count only paid payments
+      { $group: { _id: null, totalAmount: { $sum: "$amount" } } }
+    ]).toArray();
+        const totalDonor = await paymentsCollections.countDocuments();
+        res.json({ totalRequests, totalFund, totalDonor});
+      } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Server error" });
+      }
     });
 
     // get my_request
@@ -186,11 +286,14 @@ async function run() {
       const page = Number(req.query.page) || 0;
       const size = Number(req.query.size) || 10;
       const status = req.query.status;
+      const role = req.query.role;
 
       // base query
-      const query = {
-        requesterEmail: email,
-      };
+      let query = {};
+
+      if (role === "donor") {
+        query = { requesterEmail: email };
+      }
 
       if (status && status !== "all") {
         query.donationStatus = status;
@@ -213,16 +316,15 @@ async function run() {
     //main dashboard
     app.get("/myRequest", async (req, res) => {
       const { email, limit } = req.query;
-      console.log("hello");
-
-      console.log(email, limit);
+      // console.log("hello");
+      // console.log(email, limit);
 
       const requests = await requestsCollections
         .find({ requesterEmail: email })
         .sort({ donationDate: -1 })
         .limit(parseInt(limit) || 3)
         .toArray();
-      console.log(requests);
+      // console.log(requests);
 
       res.send({ requests });
     });
@@ -233,6 +335,25 @@ async function run() {
       const update = { $set: { donationStatus: status } };
       const result = await requestsCollections.updateOne(query, update);
       res.send(result);
+    });
+
+    //---------------After Editing
+    router.patch("/update/request/:id", async (req, res) => {
+      const { id } = req.params;
+      const updateData = req.body;
+      const result = await requestsCollections.findOneAndUpdate(
+        { _id: new ObjectId(id) },
+        { $set: updateData },
+        { returnDocument: "after" }
+      );
+
+      if (!result.value)
+        return res.status(404).json({ message: "Request not found" });
+
+      res.json({
+        message: "Updated successfully",
+        updatedRequest: result.value,
+      });
     });
 
     //Payment
