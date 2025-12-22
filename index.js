@@ -5,6 +5,7 @@ require("dotenv").config();
 const port = process.env.PORT || 3000;
 const stripe = require("stripe")(process.env.STRIPE_SECRATR);
 const crypto = require("crypto");
+const router = express.Router();
 
 const app = express();
 app.use(cors());
@@ -39,8 +40,7 @@ admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
 
-const uri =
-  "mongodb+srv://BloodLove:8LZ8o1zW4cGs3Lqs@cluster0.hc6rogn.mongodb.net/?appName=Cluster0";
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.hc6rogn.mongodb.net/?appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -242,37 +242,19 @@ async function run() {
       res.json({ message: "Donation request deleted successfully" });
     });
 
-    // for admin send the total donor number -----------------
-    // app.get("/donors/count", async (req, res) => {
-    //   try {
-    //     const totalDonor = await userCollections.countDocuments();
-    //     res.json({ totalDonor });
-    //   } catch (err) {
-    //     console.error(err);
-    //     res.status(500).json({ message: "Server error" });
-    //   }
-    // });
-    // // for admin send the total donor number -----------------
-    // app.get("/requests/count", async (req, res) => {
-    //   try {
-    //     const totalRequests = await requestsCollections.countDocuments();
-    //     res.json({ totalRequests });
-    //   } catch (err) {
-    //     console.error(err);
-    //     res.status(500).json({ message: "Server error" });
-    //   }
-    // });
     // for admin send the total Request number -----------------
     app.get("/requests/count", async (req, res) => {
       try {
         const totalRequests = await requestsCollections.countDocuments();
         // const totalFund = await userCollections.countDocuments();
-         const totalFund = await paymentsCollections.aggregate([
-      { $match: { payment_status: "paid" } }, // optional: count only paid payments
-      { $group: { _id: null, totalAmount: { $sum: "$amount" } } }
-    ]).toArray();
+        const totalFund = await paymentsCollections
+          .aggregate([
+            { $match: { payment_status: "paid" } }, // optional: count only paid payments
+            { $group: { _id: null, totalAmount: { $sum: "$amount" } } },
+          ])
+          .toArray();
         const totalDonor = await paymentsCollections.countDocuments();
-        res.json({ totalRequests, totalFund, totalDonor});
+        res.json({ totalRequests, totalFund, totalDonor });
       } catch (err) {
         console.error(err);
         res.status(500).json({ message: "Server error" });
@@ -337,23 +319,19 @@ async function run() {
       res.send(result);
     });
 
-    //---------------After Editing
-    router.patch("/update/request/:id", async (req, res) => {
+    //--------------------------After Editing----------------------
+    app.patch("/update/request/:id", async (req, res) => {
       const { id } = req.params;
       const updateData = req.body;
+      // console.log("id:", id, "isValid:", ObjectId.isValid(id));
+
       const result = await requestsCollections.findOneAndUpdate(
         { _id: new ObjectId(id) },
-        { $set: updateData },
-        { returnDocument: "after" }
+        { $set: updateData }
+        // { returnDocument: "after" }
       );
 
-      if (!result.value)
-        return res.status(404).json({ message: "Request not found" });
-
-      res.json({
-        message: "Updated successfully",
-        updatedRequest: result.value,
-      });
+      res.send(result.value);
     });
 
     //Payment
