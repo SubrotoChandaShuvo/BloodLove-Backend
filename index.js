@@ -64,6 +64,12 @@ async function run() {
 
     //Users Post
     app.post("/users", async (req, res) => {
+      const user = req.body;
+      const query = { email: user.email };
+      const existingUser = await userCollections.findOne(query);
+      if (existingUser) {
+        return res.send({ message: "user already exists", insertedId: null });
+      }
       const userInfo = req.body;
       userInfo.createdAt = new Date();
       userInfo.role = "donor";
@@ -242,7 +248,7 @@ async function run() {
       res.json({ message: "Donation request deleted successfully" });
     });
 
-    // for admin send the total Request number -----------------
+    // for admin send the total Request number 
     app.get("/requests/count", async (req, res) => {
       try {
         // Count all blood donation requests
@@ -252,12 +258,16 @@ async function run() {
         const totalDonor = await userCollections.countDocuments({ role: "donor" });
 
         // Sum all paid payment/funding amounts
-        const totalFund = await paymentsCollections
+        const aggregationResult = await paymentsCollections
           .aggregate([
             { $match: { payment_status: "paid" } },
             { $group: { _id: null, totalAmount: { $sum: "$amount" } } },
           ])
           .toArray();
+
+        const totalFund = aggregationResult.length > 0 
+          ? aggregationResult 
+          : [{ totalAmount: 0 }];
 
         res.json({ totalRequests, totalDonor, totalFund });
       } catch (err) {
