@@ -40,7 +40,7 @@ admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
 
-const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.hc6rogn.mongodb.net/?appName=Cluster0`;
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.nyu7lgj.mongodb.net/?appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -245,16 +245,21 @@ async function run() {
     // for admin send the total Request number -----------------
     app.get("/requests/count", async (req, res) => {
       try {
+        // Count all blood donation requests
         const totalRequests = await requestsCollections.countDocuments();
-        // const totalFund = await userCollections.countDocuments();
+
+        // Count all users with role "donor"
+        const totalDonor = await userCollections.countDocuments({ role: "donor" });
+
+        // Sum all paid payment/funding amounts
         const totalFund = await paymentsCollections
           .aggregate([
-            { $match: { payment_status: "paid" } }, // optional: count only paid payments
+            { $match: { payment_status: "paid" } },
             { $group: { _id: null, totalAmount: { $sum: "$amount" } } },
           ])
           .toArray();
-        const totalDonor = await paymentsCollections.countDocuments();
-        res.json({ totalRequests, totalFund, totalDonor });
+
+        res.json({ totalRequests, totalDonor, totalFund });
       } catch (err) {
         console.error(err);
         res.status(500).json({ message: "Server error" });
